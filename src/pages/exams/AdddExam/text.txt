@@ -1,0 +1,1653 @@
+import React, { useState, useEffect, useRef } from "react";
+import Select from "react-select";
+import axios from "axios";
+import Radio from "@/components/ui/Radio";
+import Textinput from "@/components/ui/Textinput";
+import Fileinput from "@/components/ui/Fileinput";
+import Button from "@/components/ui/Button";
+
+const Examlisting = (props) => {
+  const {
+    onSubmit,
+    setExamName,
+    data
+  } = props;
+
+  const [name, setName] = useState("");
+  const [examfullname, setExamFullname] = useState("");
+  const [examtype, setExamType] = useState("");
+  const [exammode, setExamMode] = useState("");
+  const [examcase, setExamCase] = useState("");
+  const [examcategory, setExamCategory] = useState([]);
+  const [coursemapping, setCourseMapping] = useState([]);
+  const [formlink, setFormLink] = useState("");
+  const [officialwebsite, setOfficialWebsite] = useState("");
+  const [applicationdate, setApplicationDate] = useState("");
+  const [startenddate, setStartEndDate] = useState("");
+  const [resultannounce, setResultAnnounce] = useState("");
+  const [general, setGeneral] = useState("");
+  const [female, setFemale] = useState("");
+  const [sc, setSc] = useState("");
+  const [pwd, setPwd] = useState("");
+  const [others, setOthers] = useState("");
+  const [file, setFile] = useState(null);
+  const [formlinkError, setFormLinkError] = useState("");
+  const [officialwebsiteError, setOfficialWebsiteError] = useState("");
+  const [imgsize, setImgsize] = useState("");
+  const [nri, setNri] = useState("");
+  const imginput = useRef(null);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("name", name);
+      formData.append("examfullname", examfullname);
+      formData.append("examtype", examtype);
+      formData.append("exammode", exammode);
+      formData.append("examcase", examcase);
+      formData.append("examcategory", examcategory.join(","));
+      formData.append("coursemapping", coursemapping.join(","));
+      formData.append("formlink", formlink);
+      formData.append("officialwebsite", officialwebsite);
+      formData.append("applicationdate", applicationdate);
+      formData.append("startenddate", startenddate);
+      formData.append("resultannounce", resultannounce);
+      formData.append("general", general);
+      formData.append("female", female);
+      formData.append("sc", sc);
+      formData.append("pwd", pwd);
+      formData.append("others", others);
+      formData.append("nri", nri);
+
+      const currentDate = new Date();
+      formData.append("added_on", currentDate);
+
+      setFormLinkError("");
+      if (!formlink.startsWith("https")) {
+        setFormLinkError('Invalid link format. Link must start with "https".');
+        return;
+      }
+
+      setOfficialWebsiteError("");
+      if (!officialwebsite.startsWith("https")) {
+        setOfficialWebsiteError('Invalid link format. Link must start with "https".');
+        return;
+      }
+
+      setImgsize("");
+      if (file && file.size > 200 * 1024) {
+        setImgsize("Size must be less than 200KB");
+        imginput.current.value = null;
+        return;
+      }
+
+      const response = await axios.post("http://localhost:4000/api/details", formData);
+      setExamName(name);
+      onSubmit();
+      console.log("Success:", response);
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  };
+
+  const [shortNames, setShortNames] = useState([]);
+
+  useEffect(() => {
+    const fetchShortNames = async () => {
+      try {
+        const response = await axios.get("http://localhost:4000/api/getallnames");
+        setShortNames(response.data.shortNames);
+      } catch (error) {
+        console.error("Error fetching short names:", error);
+      }
+    };
+
+    fetchShortNames();
+  }, []);
+
+  const optionsfir = [
+    ...shortNames.map((name) => ({ value: name, label: name })),
+    { value: "createYourOwn", label: "Create Your Own" },
+  ];
+
+  const optionssec = [
+    { value: 1, label: "Paramedical" },
+    { value: 2, label: "Medical" },
+    { value: 3, label: "Pharmacy" },
+    { value: 4, label: "Dental" },
+    { value: 5, label: "Science" },
+    { value: 6, label: "Veterinary" },
+    { value: 7, label: "Ayurveda" },
+  ];
+
+  const [examDetails, setExamDetails] = useState({});
+
+  const fetchDetailsByName = async (selectedName) => {
+    try {
+      const response = await axios.get(`http://localhost:4000/api/getnamedetails/${selectedName}`);
+      if (response.data && response.data.length > 0) {
+        setExamDetails(response.data[0]);
+        console.log(response.data);
+      } else {
+        setExamDetails({});
+      }
+    } catch (error) {
+      console.error("Error fetching details:", error);
+    }
+  };
+
+  const handleChangeName = (selectedOption) => {
+    if (selectedOption) {
+      setName(selectedOption.value);
+      fetchDetailsByName(selectedOption.value);
+    } else {
+      setExamDetails({});
+    }
+  };
+
+  useEffect(() => {
+    setExamFullname(examDetails.full_name || "");
+    setExamType(examDetails.type || "");
+    setExamMode(examDetails.mode || "");
+    setExamCase(examDetails.exam_type || "");
+    setExamCategory(examDetails.category || []);
+  }, [examDetails]);
+
+  const [mapcourses, setMapCourses] = useState([]);
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        const response = await axios.get("http://localhost:4000/api/getallcourses");
+        setMapCourses(response.data.courses || []);
+      } catch (error) {
+        console.error("Error fetching courses:", error);
+      }
+    };
+
+    fetchCourses();
+  }, []);
+
+  const optionsmap = [
+    ...mapcourses.map((courses) => ({ value: courses, label: courses })),
+  ];
+
+  return (
+    <div>
+      <form className="space-y-4" onSubmit={handleSubmit}>
+        <div className="flex flex-wrap" style={{ gap: "1rem" }}>
+          <div className="space-y-3" style={{ width: "33rem" }}>
+            <label htmlFor="largeInput" className="block capitalize form-label">
+              Exam Short Name<span style={{ color: "red" }}>*</span>
+            </label>
+            <Select
+              type="text"
+              name="Exam Short Name"
+              id="first-select"
+              options={optionsfir}
+              value={optionsfir.find((selectedOption) => selectedOption.value === name)}
+              onChange={handleChangeName}
+              isSearchable
+              placeholder="Select or enter exam short name"
+            />
+          </div>
+          <div className="flex flex-wrap flex-row space-x-10 -ml-9 -mt-6 xl:-mt-16 xl:mr-44 xl:mb-8">
+            <label htmlFor="status" className="block capitalize form-label mt-4 ml-10 xl:mt-16 xl:ml-9">
+              Exam List Type<span style={{ color: "red" }}>*</span>
+            </label>
+            <div className="flex sm:flex-row gap-5">
+              <Radio
+                id="public"
+                name="status"
+                value="public"
+                label="Public"
+                checked={examtype === "public"}
+                onChange={() => setExamType("public")}
+              />
+              <Radio
+                id="private"
+                name="status"
+                value="private"
+                label="Private"
+                checked={examtype === "private"}
+                onChange={() => setExamType("private")}
+              />
+            </div>
+          </div>
+          <div className="flex flex-wrap" style={{ gap: "1rem" }}>
+            <label htmlFor="largeInput" className="block capitalize form-label">
+              Exam Full Name
+            </label>
+            <Textinput
+              type="text"
+              name="Exam Full Name"
+              id="second-select"
+              value={examfullname}
+              onChange={(e) => setExamFullname(e.target.value)}
+              placeholder="Enter exam full name"
+            />
+          </div>
+          <div className="space-y-3" style={{ width: "33rem" }}>
+            <label htmlFor="status" className="block capitalize form-label">
+              Exam Mode
+            </label>
+            <Textinput
+              type="text"
+              name="Exam Mode"
+              id="exam-mode"
+              value={exammode}
+              onChange={(e) => setExamMode(e.target.value)}
+              placeholder="Enter exam mode"
+            />
+          </div>
+          <div className="space-y-3" style={{ width: "33rem" }}>
+            <label htmlFor="status" className="block capitalize form-label">
+              Exam Case
+            </label>
+            <Textinput
+              type="text"
+              name="Exam Case"
+              id="exam-case"
+              value={examcase}
+              onChange={(e) => setExamCase(e.target.value)}
+              placeholder="Enter exam case"
+            />
+          </div>
+          <div className="space-y-3" style={{ width: "33rem" }}>
+            <label htmlFor="status" className="block capitalize form-label">
+              Form Link
+            </label>
+            <Textinput
+              type="text"
+              name="Form Link"
+              id="form-link"
+              value={formlink}
+              onChange={(e) => setFormLink(e.target.value)}
+              placeholder="Enter form link"
+            />
+            {formlinkError && <p className="text-red-500">{formlinkError}</p>}
+          </div>
+          <div className="space-y-3" style={{ width: "33rem" }}>
+            <label htmlFor="status" className="block capitalize form-label">
+              Official Website
+            </label>
+            <Textinput
+              type="text"
+              name="Official Website"
+              id="official-website"
+              value={officialwebsite}
+              onChange={(e) => setOfficialWebsite(e.target.value)}
+              placeholder="Enter official website"
+            />
+            {officialwebsiteError && <p className="text-red-500">{officialwebsiteError}</p>}
+          </div>
+          <div className="space-y-3" style={{ width: "33rem" }}>
+            <label htmlFor="status" className="block capitalize form-label">
+              Application Date
+            </label>
+            <Textinput
+              type="text"
+              name="Application Date"
+              id="application-date"
+              value={applicationdate}
+              onChange={(e) => setApplicationDate(e.target.value)}
+              placeholder="Enter application date"
+            />
+          </div>
+          <div className="space-y-3" style={{ width: "33rem" }}>
+            <label htmlFor="status" className="block capitalize form-label">
+              Start and End Date
+            </label>
+            <Textinput
+              type="text"
+              name="Start and End Date"
+              id="start-end-date"
+              value={startenddate}
+              onChange={(e) => setStartEndDate(e.target.value)}
+              placeholder="Enter start and end date"
+            />
+          </div>
+          <div className="space-y-3" style={{ width: "33rem" }}>
+            <label htmlFor="status" className="block capitalize form-label">
+              Result Announcement
+            </label>
+            <Textinput
+              type="text"
+              name="Result Announcement"
+              id="result-announcement"
+              value={resultannounce}
+              onChange={(e) => setResultAnnounce(e.target.value)}
+              placeholder="Enter result announcement"
+            />
+          </div>
+          <div className="space-y-3" style={{ width: "33rem" }}>
+            <label htmlFor="status" className="block capitalize form-label">
+              General
+            </label>
+            <Textinput
+              type="text"
+              name="General"
+              id="general"
+              value={general}
+              onChange={(e) => setGeneral(e.target.value)}
+              placeholder="Enter general"
+            />
+          </div>
+          <div className="space-y-3" style={{ width: "33rem" }}>
+            <label htmlFor="status" className="block capitalize form-label">
+              Female
+            </label>
+            <Textinput
+              type="text"
+              name="Female"
+              id="female"
+              value={female}
+              onChange={(e) => setFemale(e.target.value)}
+              placeholder="Enter female"
+            />
+          </div>
+          <div className="space-y-3" style={{ width: "33rem" }}>
+            <label htmlFor="status" className="block capitalize form-label">
+              SC
+            </label>
+            <Textinput
+              type="text"
+              name="SC"
+              id="sc"
+              value={sc}
+              onChange={(e) => setSc(e.target.value)}
+              placeholder="Enter sc"
+            />
+          </div>
+          <div className="space-y-3" style={{ width: "33rem" }}>
+            <label htmlFor="status" className="block capitalize form-label">
+              PWD
+            </label>
+            <Textinput
+              type="text"
+              name="PWD"
+              id="pwd"
+              value={pwd}
+              onChange={(e) => setPwd(e.target.value)}
+              placeholder="Enter pwd"
+            />
+          </div>
+          <div className="space-y-3" style={{ width: "33rem" }}>
+            <label htmlFor="status" className="block capitalize form-label">
+              Others
+            </label>
+            <Textinput
+              type="text"
+              name="Others"
+              id="others"
+              value={others}
+              onChange={(e) => setOthers(e.target.value)}
+              placeholder="Enter others"
+            />
+          </div>
+          <div className="space-y-3" style={{ width: "33rem" }}>
+            <label htmlFor="status" className="block capitalize form-label">
+              File Upload
+            </label>
+            <Fileinput
+              ref={imginput}
+              type="file"
+              name="File Upload"
+              id="file-upload"
+              accept="image/*"
+              onChange={(e) => setFile(e.target.files[0])}
+            />
+            {imgsize && <p className="text-red-500">{imgsize}</p>}
+          </div>
+          <div className="space-y-3" style={{ width: "33rem" }}>
+            <label htmlFor="status" className="block capitalize form-label">
+              NRI
+            </label>
+            <Textinput
+              type="text"
+              name="NRI"
+              id="nri"
+              value={nri}
+              onChange={(e) => setNri(e.target.value)}
+              placeholder="Enter nri"
+            />
+          </div>
+        </div>
+        <div className="my-6">
+          <Button type="submit">Submit</Button>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+export default Examlisting;
+
+kvnfjvnuefivnweorvjnj    evjierioviernvner    jernvjernvjbn23456789hfbvhdfb   345678
+
+import React, { useState, useEffect, createRef } from "react";
+import Select from "react-select";
+import axios from "axios";
+import Radio from "@/components/ui/Radio";
+import Textinput from "@/components/ui/Textinput";
+import Fileinput from "@/components/ui/Fileinput";
+import Button from "@/components/ui/Button";
+
+// Fixed Options Select
+
+const Examlisting = (onSubmit, setExamName, data) => {
+  const [name, setName] = useState("");
+  const [examfullname, setExamFullname] = useState("");
+  const [examtype, setExamType] = useState("");
+  const [exammode, setExamMode] = useState("");
+  const [examcase, setExamCase] = useState("");
+  const [examcategory, setExamCategory] = useState("");
+  const [coursemapping, setCourseMapping] = useState("");
+  const [formlink, setFormLink] = useState("");
+  const [officialwebsite, setofficialwebsite] = useState("");
+
+  const [applicationdate, setApplicationDate] = useState("");
+  const [startenddate, setStartEndDate] = useState("");
+  const [resultannounce, setResultAnnounce] = useState("");
+  const [general, setgeneral] = useState("");
+
+  const [female, setFemale] = useState("");
+  const [outside, setOutside] = useState("");
+  const [sc, setSc] = useState("");
+  const [pwd, setPwd] = useState("");
+  const [others, setOthers] = useState("");
+  const [file, setFile] = useState("");
+  const [formlinkError, setFormLinkError] = useState("");
+  const [officialwebsiteError, setOfficialWebsiteError] = useState("");
+  // const [sessionError, setSessionError] = useState('');
+  const [imgsize, setImgsize] = useState("");
+  const [nri, setNri] = useState("");
+
+  const imginput = React.createRef();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("name", name);
+      formData.append("examfullname", examfullname);
+      formData.append("examtype", examtype);
+      formData.append("exammode", exammode);
+      formData.append("examcase", examcase);
+      formData.append("examcategory", examcategory);
+      formData.append("coursemapping", coursemapping);
+      formData.append("formlink", formlink);
+      formData.append("officialwebsite", officialwebsite);
+      // formData.append("session", session);
+      formData.append("applicationdate", applicationdate);
+      formData.append("startenddate", startenddate);
+      formData.append("resultannounce", resultannounce);
+      formData.append("general", general);
+      formData.append("male", male);
+      formData.append("female", female);
+      // formData.append("outside", outside);
+      formData.append("sc", sc);
+      formData.append("pwd", pwd);
+      formData.append("others", others);
+      formData.append("nri", nri);
+      debugger;
+      const currentDate = new Date();
+      formData.append("added_on", currentDate);
+      setFormLinkError("");
+      if (!formlink.startsWith("https")) {
+        setFormLinkError('Invalid link format. Link must start with "https".');
+        return;
+      }
+
+      setOfficialWebsiteError("");
+      if (!officialwebsite.startsWith("https")) {
+        setOfficialWebsiteError(
+          'Invalid link format. Link must start with "https".'
+        );
+        return;
+      }
+      // setSessionError("");
+      // if (!session.toString().length === 4) {
+      //   setSessionError("Session must be a 4-digit year.");
+      //   return;
+      // }
+      setImgsize("");
+      if (file && file.size > 200 * 1024) {
+        setImgsize("Size must be less than 200KB");
+        imginput.current.value = null;
+        return;
+      }
+      console.log("Form Data", formData);
+
+      const response = await axios.post(
+        "http://localhost:4000/api/details",
+        formData
+      );
+
+      setExamName(name);
+
+      onSubmit();
+      console.log("Success:", response);
+    } catch (error) {}
+  };
+
+  const [shortNames, setShortNames] = useState([]);
+
+  useEffect(() => {
+    const fetchShortNames = async () => {
+      try {
+        const response = await axios.get(
+          "http://localhost:4000/api/getallnames"
+        );
+        setShortNames(response.data.shortNames);
+      } catch (error) {
+        console.error("Error fetching short names:", error);
+      }
+    };
+
+    fetchShortNames();
+  }, []);
+
+  const optionsfir = [
+    ...shortNames.map((name) => ({ value: name, label: name })),
+    { value: "createYourOwn", label: "Create Your Own" },
+  ];
+
+  const optionssec = [
+    { value: 1, label: "Paramedical" },
+    { value: 2, label: "Medical" },
+    { value: 3, label: "Pharmacy" },
+    { value: 4, label: "Dental" },
+    { value: 5, label: "Science" },
+    { value: 6, label: "Veterinary" },
+    { value: 7, label: "Ayurveda" },
+  ];
+
+  const [examDetails, setExamDetails] = useState({});
+
+  const fetchDetailsByName = async (selectedName) => {
+    try {
+      const response = await axios.get(
+        `http://localhost:4000/api/getnamedetails/${selectedName}`
+      );
+      if (response.data && response.data.length > 0) {
+        setExamDetails(response.data[0]);
+        console.log(response.data); // Assuming the response is an array of details
+      } else {
+        setExamDetails({});
+      }
+    } catch (error) {
+      console.error("Error fetching details:", error);
+    }
+  };
+
+  const handleChangeName = (selectedOption) => {
+    // console.log(selectedOption);
+    if (selectedOption) {
+      setName(selectedOption.value); // Set the name state
+      fetchDetailsByName(selectedOption.value); // Fetch details by name
+    } else {
+      // Clear details if no name is selected
+      setExamDetails({});
+    }
+  };
+
+  useEffect(() => {
+    // Update examfullname when examDetails changes
+
+    setExamFullname(examDetails.full_name || "");
+    setExamType(examDetails.type || "");
+    setExamMode(examDetails.mode || "");
+    setExamCase(examDetails.exam_type || "");
+    setExamCategory(examDetails.category || "");
+  }, [examDetails]);
+
+  const [mapcourses, setMapCourses] = useState([]);
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        const response = await axios.get(
+          "http://localhost:4000/api/getallcourses"
+        );
+        setMapCourses(response.data.courses);
+      } catch (error) {
+        console.error("Error fetching courses:", error);
+      }
+    };
+
+    fetchCourses();
+  }, []);
+
+  const optionsmap = [
+    ...mapcourses.map((courses) => ({ value: courses, label: courses })),
+  ];
+
+  return (
+    <div>
+      <form className="space-y-4" onSubmit={handleSubmit}>
+        <div className="flex flex-wrap" style={{ gap: "1rem" }}>
+          <div className="space-y-3" style={{ width: "33rem" }}>
+            <label
+              htmlFor="largeInput"
+              className="block capitalize form-label  "
+            >
+              Exam Short Name<span style={{ color: "red" }}>*</span>
+            </label>
+            <Textinput
+              type="text"
+              name="Exam Short Name"
+              id="first-select"
+              options={optionsfir}
+              value={optionsfir.find(
+                (selectedOption) => selectedOption.value === name
+              )}
+              onChange={handleChangeName}
+              isSearchable
+              placeholder="Select or enter exam short name"
+            />
+          </div>
+          <div className="flex flex-wrap flex-row space-x-10 -ml-9  -mt-6 xl:-mt-16 xl:mr-44 xl:mb-8">
+            <label
+              htmlFor="status"
+              className="block capitalize form-label mt-4 ml-10 xl:mt-16 xl:ml-9"
+            >
+              Exam List Type<span style={{ color: "red" }}>*</span>
+            </label>
+            <div className="flex sm:flex-row gap-9">
+              <Radio
+                label="Entrance Exam"
+                htmlFor="tentative"
+                id="tentative"
+                name="examListType"
+                value="Entrance Exam"
+                onChange={(e) => setExamType(e.target.value)}
+                checked={examDetails.type === "1"}
+              />
+
+              <Radio
+                label="Recruitment Exam"
+                htmlFor="yetToBeAnnounced"
+                id="yetToBeAnnounced"
+                name="examListType"
+                value="Recruitment Exam"
+                onChange={(e) => setExamType(e.target.value)}
+                checked={examDetails.type === "2"}
+              />
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-wrap mt-6" style={{ gap: "1rem" }}>
+          <div style={{ width: "50rem" }}>
+            <label
+              htmlFor="largeInput"
+              className="block capitalize form-label  "
+            >
+              Exam Full Name<span style={{ color: "red" }}>*</span>
+            </label>
+            <Textinput
+              type="text"
+              placeholder=""
+              value={examfullname}
+              onChange={(e) => setExamFullname(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className=" w-70 lg:w-96">
+            <label
+              htmlFor="exampleFormControlFile1"
+              className="block capitalize form-label  "
+            >
+              Exam logo<span style={{ color: "red" }}>*</span>
+            </label>
+            <Fileinput
+              id="exampleFormControlFile1"
+              accept=".jpg, .jpeg, .png"
+              ref={imginput}
+              onChange={(e) => setFile(e.target.files[0])}
+              required
+            />
+            {imgsize && (
+              <div className="error-message text-red-500 text-xs mt-1">
+                {imgsize}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex mt-6  flex-wrap">
+          <div
+            className="flex flex-wrap space-x-10 "
+            style={{
+              marginTop: "-4.5rem",
+              marginLeft: "-2rem",
+              marginBottom: "2rem",
+            }}
+          >
+            <label
+              htmlFor="status"
+              className="block capitalize form-label"
+              style={{ marginTop: "4.5rem", marginLeft: "2.3rem" }}
+            >
+              Exam Mode<span style={{ color: "red" }}>*</span>
+            </label>
+            <Radio
+              label="Online"
+              htmlFor="Online"
+              id="Online"
+              name="examMode"
+              value="Online"
+              onChange={(e) => setExamMode(e.target.value)}
+              checked={examDetails.mode === "1"}
+            />
+            <Radio
+              label="Offline"
+              htmlFor="Offline"
+              id="Offline"
+              name="examMode"
+              value="Offline"
+              onChange={(e) => setExamMode(e.target.value)}
+              checked={examDetails.mode === "2"}
+            />
+            <Radio
+              label="Online & Offline Both"
+              htmlFor="OnlineAndOfflineBoth"
+              id="OnlineAndOfflineBoth"
+              name="examMode"
+              value="Online and Offline Both"
+              onChange={(e) => setExamMode(e.target.value)}
+              checked={examDetails.mode === "3"}
+            />
+          </div>
+          <div className="flex flex-wrap space-x-10 -ml-9  -mt-6 xl:-mt-16 xl:-ml-4 xl:mb-8">
+            <label
+              htmlFor="status"
+              className="block capitalize form-label mt-4 ml-10 xl:mt-16 xl:ml-9"
+            >
+              Exam Type<span style={{ color: "red" }}>*</span>
+            </label>
+            <Radio
+              label="National Exam"
+              htmlFor="NationalExam"
+              id="NationalExam"
+              name="examType"
+              value="National Exam"
+              onChange={(e) => setExamCase(e.target.value)}
+              checked={examDetails.exam_type === 1}
+            />
+            <Radio
+              label="State Exam"
+              htmlFor="StateExam"
+              id="StateExam"
+              name="examType"
+              value="State Exam"
+              onChange={(e) => setExamCase(e.target.value)}
+              checked={examDetails.exam_type === 2}
+            />
+          </div>
+        </div>
+
+        <div className="mt-6 flex flex-wrap" style={{ gap: "1rem" }}>
+          <div style={{ width: "25rem" }}>
+            <label htmlFor="select" className="block capitalize form-label  ">
+              Exam Category<span style={{ color: "red" }}>*</span>
+            </label>
+
+            <Select
+              isClearable={false}
+              // styles={styles}
+
+              className="react-select"
+              classNamePrefix="select"
+              id="second-select"
+              isMulti
+              options={optionssec}
+              value={
+                typeof examDetails.category === "string"
+                  ? examCategory.category
+                      .split(",")
+                      .map((index) => parseInt(index, 10))
+                      .filter(
+                        (index) => index >= 1 && index <= optionssec.length
+                      )
+                      .map((index) => optionssec[index - 1])
+                  : optionssec.filter(
+                      (option) => examDetails.category == option.value
+                    )
+              }
+              onChange={(selectedOptions) =>
+                setExamCategory(selectedOptions.map((option) => option.value))
+              }
+            />
+          </div>
+
+          <div style={{ width: "25rem" }}>
+            <label htmlFor="select" className="block capitalize form-label  ">
+              Course Mapping
+            </label>
+
+            <Select
+              isClearable={false}
+              // styles={styles}
+
+              name="colors"
+              className="react-select"
+              classNamePrefix="select"
+              id="mul_1"
+              options={optionsmap}
+              isMulti
+              closeMenuOnSelect={false}
+              placeholder="Select options..."
+              value={optionsmap.find(
+                (selectedOption) => selectedOption.value === coursemapping
+              )}
+              onChange={(selectedOptions) =>
+                setCourseMapping(selectedOptions.map((option) => option.value))
+              }
+            />
+          </div>
+
+          <div style={{ width: "25rem" }}>
+            <label
+              htmlFor="largeInput"
+              className="block capitalize form-label  "
+            >
+              Application Form Link
+            </label>
+            <Textinput
+              type="text"
+              placeholder=""
+              value={formlink}
+              onChange={(e) => setFormLink(e.target.value)}
+              required
+            />
+            {formlinkError && (
+              <div className="error-message text-red-500 text-xs mt-1">
+                {formlinkError}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="mt-6 flex flex-wrap" style={{ gap: "1rem" }}>
+          <div style={{ width: "25rem" }}>
+            <label
+              htmlFor="largeInput"
+              className="block capitalize form-label  "
+            >
+              Official Website<span style={{ color: "red" }}>*</span>
+            </label>
+            <Textinput
+              type="text"
+              placeholder=""
+              value={officialwebsite}
+              onChange={(e) => setofficialwebsite(e.target.value)}
+              required
+            />
+            {officialwebsiteError && (
+              <div className="error-message text-red-500 text-xs mt-1">
+                {officialwebsiteError}
+              </div>
+            )}
+          </div>
+
+          <div style={{ width: "25rem" }}>
+            <label
+              htmlFor="largeInput"
+              className="block capitalize form-label  "
+            >
+              Application Date<span style={{ color: "red" }}>*</span>
+            </label>
+            <Textinput
+              type="text"
+              placeholder="Yet to be announce"
+              value={applicationdate}
+              onChange={(e) => setApplicationDate(e.target.value)}
+              required
+            />
+          </div>
+          <div style={{ width: "25rem" }}>
+            <label
+              htmlFor="largeInput"
+              className="block capitalize form-label  "
+            >
+              Start & End Date<span style={{ color: "red" }}>*</span>
+            </label>
+            <Textinput
+              type="text"
+              placeholder="Yet to be announce"
+              value={startenddate}
+              onChange={(e) => setStartEndDate(e.target.value)}
+              required
+            />
+          </div>
+        </div>
+        <div className="mt-6 flex flex-wrap" style={{ gap: "1rem" }}>
+          <div style={{ width: "25rem" }}>
+            <label
+              htmlFor="largeInput"
+              className="block capitalize form-label  "
+            >
+              Result Announce<span style={{ color: "red" }}>*</span>
+            </label>
+            <Textinput
+              type="text"
+              placeholder="Yet to be announce"
+              value={resultannounce}
+              onChange={(e) => setResultAnnounce(e.target.value)}
+              required
+            />
+          </div>
+        </div>
+
+        <div className="mt-6 flex flex-wrap" style={{ gap: "1rem" }}>
+          <label
+            htmlFor="largeInput"
+            className="block capitalize form-label"
+            style={{ marginBottom: "-0.7rem" }}
+          >
+            Exam Fee<span style={{ color: "red" }}>*</span>
+          </label>
+          <div style={{ width: "10rem" }}>
+            <label
+              htmlFor="largeInput"
+              className="block capitalize form-label  "
+            >
+              General
+            </label>
+            <Textinput
+              type="text"
+              placeholder=""
+              value={general}
+              onChange={(e) => setgeneral(e.target.value)}
+            />
+          </div>
+          <div style={{ width: "10rem" }}>
+            <label
+              htmlFor="largeInput"
+              className="block capitalize form-label  "
+            >
+              Women
+            </label>
+            <Textinput
+              type="text"
+              placeholder=""
+              value={female}
+              onChange={(e) => setFemale(e.target.value)}
+            />
+          </div>
+          <div style={{ width: "10rem" }}>
+            <label
+              htmlFor="largeInput"
+              className="block capitalize form-label  "
+            >
+              SC
+            </label>
+            <Textinput
+              type="text"
+              placeholder=""
+              value={sc}
+              onChange={(e) => setSc(e.target.value)}
+            />
+          </div>
+          <div style={{ width: "10rem" }}>
+            <label
+              htmlFor="largeInput"
+              className="block capitalize form-label  "
+            >
+              PWD
+            </label>
+            <Textinput
+              type="text"
+              placeholder=""
+              value={pwd}
+              onChange={(e) => setPwd(e.target.value)}
+            />
+          </div>
+          <div style={{ width: "10rem" }}>
+            <label
+              htmlFor="largeInput"
+              className="block capitalize form-label  "
+            >
+              Other
+            </label>
+            <Textinput
+              type="text"
+              placeholder=""
+              value={others}
+              onChange={(e) => setOthers(e.target.value)}
+            />
+          </div>
+          <div style={{ width: "10rem" }}>
+            <label
+              htmlFor="largeInput"
+              className="block capitalize form-label  "
+            >
+              Notes
+            </label>
+            <Textinput
+              type="text"
+              placeholder=""
+              value={others}
+              onChange={(e) => setOthers(e.target.value)}
+            />
+          </div>
+          <div style={{ width: "10rem" }}>
+            <label
+              htmlFor="largeInput"
+              className="block capitalize form-label  "
+            >
+              Foreigner
+            </label>
+            <Textinput
+              type="text"
+              placeholder=""
+              value={nri}
+              onChange={(e) => setNri(e.target.value)}
+            />
+          </div>
+        </div>
+        <Button text="Go to Overview" className="btn-success" type="submit" />
+      </form>
+    </div>
+  );
+};
+
+export default Examlisting;
+
+
+ovrerview
+import React, { useState } from "react";
+import Textinput from "@/components/ui/Textinput";
+import axios from 'axios';
+import Fileinput from "@/components/ui/Fileinput";
+import Radio from "@/components/ui/Radio";
+import Button from "@/components/ui/Button";
+import Modal from "@/components/ui/Modal";
+
+import { Editor } from '@tinymce/tinymce-react';
+
+import cheerio from 'cheerio'
+
+import Icon from "@/components/ui/Icon";
+
+import { useForm, useFieldArray } from "react-hook-form";
+import Flatpickr from "react-flatpickr";
+function Overview(examName, onAddSubPage, onSubmitt}) {
+  const [value, setValue] = useState("A");
+  const [value1, setValue1] = useState("C");
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [picker, setPicker] = useState(new Date());
+  const handleChange = (e) => {
+    setValue(e.target.value);
+    
+  };
+  const handleChange1 = (e) => {
+    setValue1(e.target.value);
+    
+  };
+  const handleFileChange = (e) => {
+    setSelectedFile(e.target.files[0]);
+  };
+
+  
+  const[examname, setExamName]=useState('');
+  const[shortdesc, setShortDesc]=useState('')
+  const[longdesc, setLongDesc]=useState('');
+  const[authname, setAuthName]=useState('');
+  const[breadt, setBreadt]=useState('');
+  const[paget, setPaget]=useState('');
+  const[metat, setMetat]=useState('');
+  const[metadesc, setMetadesc]=useState('');
+  const[metakey, setMetakey]=useState('');
+  const[ogt, setOgt]=useState('');
+  const[ogdesc, setOgdesc]=useState('');
+  const[time, setTime]=useState('')
+  const[file, setFile]=useState('');
+  const[ogrobot, setOgrobot]=useState('');
+  const[oggogle, setOggogle]=useState('');
+  const[notifications, setNotifications] = useState([]);
+
+  const extractTextFromHtml = (html) => {
+    const $ = cheerio.load(html); // Load HTML content using cheerio
+    // Extract text from each element
+    return $('body').text();
+  };
+  
+  // Handler function for editor change
+  const handleEditorChange = (content) => {
+    // Extract text from HTML content while preserving structure
+    const plainText = extractTextFromHtml(content);
+    // Set the plain text to the state variable
+    setLongDesc(plainText);
+  };
+  
+
+  const addNotification = () => {
+    
+    setNotifications([...notifications,{ date: '', text: '', link: '' }]);
+  };
+  const deleteNotification = (index) => {
+    const updatedNotifications = [...notifications];
+    updatedNotifications.splice(index, 1);
+    setNotifications(updatedNotifications);
+  };
+  const addSubPage = () => {
+    onAddSubPage();
+  };
+
+  const fileinput = createRef();
+  const submitoverview = async(e)=>{
+      e.preventDefault();
+
+      try {
+        const formData = new FormData();
+        formData.append('file',file);
+        formData.append('examName', examName);
+        formData.append('shortdesc', shortdesc);
+        formData.append('longdesc', longdesc);
+        formData.append('authname', authname);
+        formData.append('breadt', breadt);
+        formData.append('paget', paget);
+        formData.append('metat', metat);
+        formData.append('metadesc', metadesc);
+        formData.append('metakey', metakey);
+        formData.append('ogt', ogt);
+        formData.append('ogdesc', ogdesc);
+        formData.append('ogrobot', ogrobot);
+        formData.append('oggogle', oggogle);
+        formData.append('time',time)
+        formData.append('status',true)
+
+        notifications.forEach((notification, index) => {
+            formData.append(`notifications[${index}][date]`, notification.date);
+            formData.append(`notifications[${index}][text]`, notification.text);
+            formData.append(`notifications[${index}][link]`, notification.link);
+            console.log('Notification:', notification);
+          });
+
+        
+        const result = await axios.post( "http://localhost:4000/api/overviewdetails", formData)
+        
+       
+        const overviewdata = await result.data();
+        console.log('Success:', overviewdata);
+        onSubmitt();
+        
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    }
+
+    const saveAsDraft = async (e) => {
+      e.preventDefault();
+    
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('examName', examName);
+        formData.append('shortdesc', shortdesc);
+        formData.append('longdesc', longdesc);
+        formData.append('authname', authname);
+        formData.append('breadt', breadt);
+        formData.append('paget', paget);
+        formData.append('metat', metat);
+        formData.append('metadesc', metadesc);
+        formData.append('metakey', metakey);
+        formData.append('ogt', ogt);
+        formData.append('ogdesc', ogdesc);
+        formData.append('ogrobot', ogrobot);
+        formData.append('oggogle', oggogle);
+        formData.append('time', time);
+        formData.append('status', false); // Set status to false for draft
+    
+        notifications.forEach((notification, index) => {
+          formData.append(`notifications[${index}][date]`, notification.date);
+          formData.append(`notifications[${index}][text]`, notification.text);
+          formData.append(`notifications[${index}][link]`, notification.link);
+        });
+    
+        const result = await axios.post("http://localhost:4000/api/overviewdetails", formData);
+        alert("Overview Data Saved as Draft");
+    
+        const overviewdata = await result.data();
+        console.log('Success:', overviewdata);
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    };
+    
+  
+
+  
+  
+  
+
+const extractTextFromHtml = (html) => {
+  const $ = cheerio.load(html); // Load HTML content using cheerio
+  // Extract text from each element
+  return $('body').text();
+};
+
+// Handler function for editor change
+const handleEditorChange = (content) => {
+  // Extract text from HTML content while preserving structure
+  const plainText = extractTextFromHtml(content);
+  // Set the plain text to the state variable
+  setLongDesc(plainText);
+};
+
+
+
+
+
+  //form repeater
+
+    const { register, control, handleSubmit, reset, trigger, setError } = useForm(
+      {
+        defaultValues: {
+          test: [{ date: "", notificationText: "", notificationLink: "" }],
+        },
+      }
+    );
+    const { fields, append, remove } = useFieldArray({
+      control,
+      name: "test",
+    });
+    const index = 1;
+    
+
+  return (
+    <div>
+       <form className="space-y-4" onSubmit={submitoverview}>
+        <p htmlFor="Input" className="mb-4">Exam Name :<span style={{marginLeft:'50px'}}>{examName}</span></p>
+   
+     <div style={{width:"100%"}}>
+        <label htmlFor="Input" className="block capitalize form-label  ">Short description<span style={{ color: 'red' }}>*</span></label>
+        <Textinput
+           
+            type="text"
+            placeholder=""
+            value={shortdesc} onChange={(e)=>setShortDesc(e.target.value)} required
+          />
+      </div>
+
+
+
+      <div>
+      <div className="input-area relative"  >
+                               <label htmlFor="Input" className="form-label" >Long Description<span style={{ color: 'red' }}>*</span></label>
+                              
+                               <Editor textareaName='content' initialValue='Write your content here' onEditorChange={handleEditorChange}
+      apiKey='kf062o0jcq27qmkwkgj36iqry9987s9bbb12au6nrwo8eszd'
+      init={{
+        height: 500,
+        menubar: true,
+        plugins: 'anchor autolink charmap codesample emoticons image link lists media searchreplace table visualblocks wordcount linkchecker markdown',
+        toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | link image media table | align lineheight | numlist bullist indent outdent | emoticons charmap | removeformat',
+      }}
+      initialValue="Write your content here!"
+    />
+                              
+       
+    
+                            </div>
+                           </div>
+
+      <div className="mt-6 flex flex-wrap" style={{gap:"1rem"}}>
+      <div style={{width:"38rem"}} >
+      <label htmlFor="Input" className="block capitalize form-label  ">Author Name<span style={{ color: 'red' }}>*</span></label>
+     
+      <Textinput
+           
+            type="text"
+            placeholder=""
+            value={authname} onChange={(e)=>setAuthName(e.target.value)}
+          />
+        </div>
+
+         <div style={{marginTop:"1.5rem"}}>
+         <Modal
+            title="Add Latest Notification"
+            label="Add Notification"
+            labelClass="btn-outline-success"
+            uncontrol
+            className="max-w-5xl"
+            
+          >
+        <div className="flex justify-end">
+         <Button
+            text="Add more"
+            icon="heroicons-outline:plus"
+            className="btn-light"
+            onClick={() => append()}
+          />
+          </div>
+        <form onSubmit={handleSubmit((data) => console.log(data))}>
+          {fields.map((item, index) => (
+            <div
+              className="lg:grid-cols-3 md:grid-cols-2 grid-cols-1 grid gap-5 mb-5 last:mb-0"
+              key={index}
+            >
+              <div>
+             <label  htmlFor={`notification-${index}`} id={`date-notification-${index}`} className="block capitalize form-label  ">Date<span style={{ color: 'red' }}>*</span></label>
+            <Flatpickr
+              className="form-control py-2"
+              
+              // onChange={(date) => setPicker(date)}
+
+              value={notification.date} 
+              onChange={(e) => {const updatedNotifications = [...notifications]; 
+                                               updatedNotifications[index] = {...notification, date:e.target.value};  setNotifications(updatedNotifications); }}
+            />
+            </div>
+            <div>
+               <label htmlFor="ValidState" className="block capitalize form-label  ">Notification Text<span style={{ color: 'red' }}>*</span></label>
+              <Textinput
+                label=""
+                type="text"
+                id={`name2${index}`}
+                placeholder=""
+                register={register}
+                name={`test[${index}].notificationText`}
+              />
+              </div>
+
+              <div className="flex justify-between items-end space-x-5">
+                <div className="flex-1">
+                <label htmlFor="ValidState" className="block capitalize form-label  ">Notification Link<span style={{ color: 'red' }}>*</span></label>
+                  <Textinput
+                    
+                    type="text"
+                    id={`name3${index}`}
+                    placeholder=""
+                    register={register}
+                    name={`test[${index}].notificationLink`}
+                    value={notification.link} 
+                    onChange={(e) => {const updatedNotifications = [...notifications]; 
+                                                     updatedNotifications[index] = {...notification, link:e.target.value};  setNotifications(updatedNotifications); }}
+                  />
+                </div>
+                <div className="flex-none relative">
+                  <button
+                    onClick={() => remove(index)}
+                    type="button"
+                    className="inline-flex items-center justify-center h-10 w-10 bg-danger-500 text-lg border rounded border-danger-500 text-white"
+                  >
+                    <Icon icon="heroicons-outline:trash" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          <div className="ltr:text-right rtl:text-left">
+            <Button text="Submit" className="btn-dark" />
+          </div>
+        </form>
+      
+          </Modal>
+         </div>
+      </div>
+     
+
+      <div className="mt-6">
+
+      <div className="md:flex justify-between items-center mb-4 ml-4">
+            <h5 className="font-light text-blue-500">SEO Tags</h5>
+             </div>
+
+          <div className="flex flex-wrap" style={{gap:"1rem"}}>
+        <div style={{width:"38rem"}}>
+        <label htmlFor="largeInput" className="block capitalize form-label  ">Breadcrum Title<span style={{ color: 'red' }}>*</span></label>
+<Textinput
+           
+            type="text"
+            placeholder=""
+            value={breadt} onChange={(e)=>setBreadt(e.target.value)} required
+          />
+        </div>
+        <div style={{width:"38rem"}}>
+        <label htmlFor="largeInput" className="block capitalize form-label  ">Page Title<span style={{ color: 'red' }}>*</span></label>
+<Textinput
+           
+            type="text"
+            placeholder=""
+            value={paget} onChange={(e)=>setPaget(e.target.value)} required
+          />
+        </div>
+      </div>
+      </div>
+
+       
+      <div className="mt-6 flex flex-wrap" style={{gap:"1rem"}}>
+        <div style={{width:"25rem"}}>
+        <label htmlFor="largeInput" className="block capitalize form-label  ">Meta Title<span style={{ color: 'red' }}>*</span></label>
+<Textinput
+            
+            type="text"
+            placeholder=""
+            value={metat} onChange={(e)=>setMetat(e.target.value)} required
+          />
+        </div>
+        <div style={{width:"25rem"}}>
+        <label htmlFor="largeInput" className="block capitalize form-label  ">Meta Description</label>
+<Textinput
+           
+            type="text"
+            placeholder=""
+            value={metadesc} onChange={(e)=>setMetadesc(e.target.value)}
+          />
+        </div>
+        <div style={{width:"25rem"}}>
+        <label htmlFor="largeInput" className="block capitalize form-label  ">Meta Keyword</label>
+<Textinput
+           
+            type="text"
+            placeholder=""
+            value={metakey} onChange={(e)=>setMetakey(e.target.value)}
+          />
+        </div>
+ </div>
+
+
+<div className="flex flex-wrap mt-4" style={{gap:"1rem"}}>
+ 
+ <div style={{width: "25rem"}}>
+<label  htmlFor="largeInput" className="block capitalize form-label  ">OG: Title</label>
+<Textinput
+          
+           type="text"
+           placeholder=""
+           value={ogt} onChange={(e)=>setOgt(e.target.value)}
+         />
+</div>
+<div style={{width: "25rem"}}>
+<label  htmlFor="largeInput" className="block capitalize form-label  ">OG: Description</label>
+<Textinput
+          
+           type="text"
+           placeholder=""
+           value={ogdesc} onChange={(e) => setOgdesc(e.target.value)} 
+         />
+</div>
+
+<div style={{width: "25rem"}}>
+<label htmlFor="exampleFormControlFile1" className="block capitalize form-label  ">OG: Image</label>
+<Fileinput
+        
+         selectedFile={selectedFile}
+        
+         id="exampleFormControlFile12" accept='.jpg, .jpeg, .png' ref={fileinput} onChange={(e)=>setFile(e.target.files[0])}
+       />
+       </div>
+</div>
+
+<div className="mt-6 flex flex-wrap gap-4  xl:gap-24">
+<div className="flex flex-wrap space-x-10" style={{marginLeft:"-2.3rem"}}>
+        <label htmlFor="status" className="block capitalize form-label" style={{marginLeft:'2.5rem'}}>OG: Robots</label>
+          <Radio
+           
+            label="Follow"
+            htmlFor="NationalExam"
+           
+            id="NationalExam" name="case1" value="Follow" onChange={(e)=>setOgrobot(e.target.value)}
+            
+          />
+          <Radio
+          
+            label="NO follow"
+            htmlFor="StateExam"
+            id="StateExam" name="examType" value="No Follow" onChange={(e)=>setOgrobot(e.target.value)}
+           
+          
+          />
+          
+        </div>
+        <div className="flex flex-wrap space-x-10 -ml-9  xl:mr-40">
+        <label htmlFor="status" className="block capitalize form-label" style={{marginLeft: "2.5rem"}}>OG: googlebot</label>
+          <Radio
+           
+            label="Follow"
+            htmlFor="NationalExam"
+            id="NationalExam" name="case2" value="Follow" onChange={(e)=>setOggogle(e.target.value)}
+           
+            
+          />
+          <Radio
+          
+            label="NO follow"
+            htmlFor="StateExam"
+            id="StateExam" name="examType" value="No Follow" onChange={(e)=>setOggogle(e.target.value)}
+          
+          />
+          
+        </div>
+  </div>
+  <div className="flex flex-wrap mt-6" style={{gap:"1rem"}}>
+  <div className="">
+  <Button text="Save as Draft" className="btn-light" type='button' onClick={saveAsDraft}/>
+    </div>
+  <div className="">
+    <Button text="Make Exam Live" className="btn-success" type='submit'/>
+    </div>
+    </div>
+    </form>
+</div>
+
+      
+  )
+}
+
+export default Overview
+
+
+
+
+//                             <div className="flex items-center" style={{marginTop:'10px'}}  >
+//                                <label for="Input" className="form-label flex">Author Name<span style={{ color: 'red' }}>*</span></label>
+//                                  <input type="text" className="form-control" style={{width:'500px', marginLeft:'-1000px'}} value={authname} onChange={(e)=>setAuthName(e.target.value)}/>
+//                                <button className="btn inline-flex justify-center btn-outline ml-3 bg-green-400 ml-10" type='button' onClick={addNotification}>Add Notification</button>
+//                             </div>
+//                             {notifications.map((notification, index) => (
+//                              <div key={index} className="flex items-center" style={{ marginTop: '10px' }}>
+//                                <label htmlFor={`notification-${index}`} className="form-label flex">Added Notification {index + 1}:</label>
+//                                  <input
+//                                  type="date" id={`date-notification-${index}`} className="date-control" style={{ width: '500px', marginLeft: '-450px', fontSize:'12px'  }} placeholder='dd-mm-yyyy' value={notification.date} onChange={(e) => {const updatedNotifications = [...notifications]; 
+//                                  updatedNotifications[index] = {...notification, date:e.target.value};  setNotifications(updatedNotifications); }} />
+//                                  <input
+//                                  type="text" id={`text-notification-${index}`} className="text-control" style={{ width: '500px', marginLeft: '10px', fontSize:'12px' }} placeholder='Notification Text' value={notification.text} onChange={(e) => {const updatedNotifications = [...notifications]; 
+//                                  updatedNotifications[index] = {...notification, text:e.target.value};  setNotifications(updatedNotifications); }} />
+//                                  <input
+//                                  type="link" id={`link-notification-${index}`} className="link-control" style={{ width: '500px', marginLeft: '10px', fontSize:'12px' }} placeholder='Notification Link' value={notification.link} onChange={(e) => {const updatedNotifications = [...notifications]; 
+//                                  updatedNotifications[index] = {...notification, link:e.target.value};  setNotifications(updatedNotifications); }} />
+//                                  <button className="btn inline-flex justify-center ml-3 bg-red-400" style={{ fontSize: '12px', padding: '4px 6px' }} type='button' onClick={() => deleteNotification(index)}>Delete</button>
+//                              </div>
+//                            ))}
+                           
+                             
+//                             <label for="Input" className="form-label mt-3" style={{ fontSize: '25px', color:'Grey' }}>SEO TAGS</label>
+                        
+//                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-7">
+//                               <div className="input-area relative">
+//                                     <label for="largeInput" className="form-label">BreadCrum Title<span style={{ color: 'red' }}>*</span></label>
+//                                     <input type="text" className="form-control" value={breadt} onChange={(e)=>setBreadt(e.target.value)} required/>
+//                               </div>
+
+//                               <div className="input-area relative">
+//                                     <label for="largeInput" className="form-label">Page Title<span style={{ color: 'red' }}>*</span></label>
+//                                     <input type="text" className="form-control" value={paget} onChange={(e)=>setPaget(e.target.value)} required/>
+//                               </div>
+//                               </div>
+//                               <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-4 gap-7">
+//                               <div className="input-area relative">
+//                                     <label for="largeInput" className="form-label">Meta Title<span style={{ color: 'red' }}>*</span></label>
+//                                     <input type="text" className="form-control" value={metat} onChange={(e)=>setMetat(e.target.value)} required/>
+//                               </div>
+
+//                               <div className="input-area relative">
+//                                     <label for="largeInput" className="form-label">Meta Description</label>
+//                                     <input type="text" className="form-control" value={metadesc} onChange={(e)=>setMetadesc(e.target.value)}/>
+//                               </div>
+
+//                               <div className="input-area relative">
+//                                     <label for="largeInput" className="form-label">Meta Keyword</label>
+//                                     <input type="text" className="form-control" value={metakey} onChange={(e)=>setMetakey(e.target.value)}/>
+//                               </div>
+
+//                               <div className="input-area relative">
+//                                     <label for="largeInput" className="form-label">OG: Title</label>
+//                                     <input type="text" className="form-control" value={ogt} onChange={(e)=>setOgt(e.target.value)}/>
+//                               </div>
+
+//                               <div className="input-area relative">
+//                                     <label for="largeInput" className="form-label">OG: Description</label>
+//                                     <input type="text" className="form-control" value={ogdesc} onChange={(e) => setOgdesc(e.target.value)} />
+//                               </div>
+
+//                               <div className="form-group mt-2">
+//                                     <label htmlFor="exampleFormControlFile1">OG: Image</label>
+//                                     <input type="file" className="form-control-file" id="exampleFormControlFile12" accept='.jpg, .jpeg, .png' ref={fileinput} onChange={(e)=>setFile(e.target.files[0])}/>
+//                               </div>
+
+//                               <div className='mt-2'>
+//                                 <label htmlFor="status" className="form-label items-center">OG: Robots</label>
+//                                    <div className="input-area relative flex">
+//                                        <div className="flex space-x-4 items-center mb-3">
+//                                            <input type="radio" id="NationalExam" name="case1" value="Follow" onChange={(e)=>setOgrobot(e.target.value)}/>
+//                                            <label htmlFor="NationalExam" className="text-sm ml-1">Follow</label>
+//                                      </div>
+//                                        <div className="flex space-x-4 items-center mb-3 ml-5">
+//                                           <input type="radio" id="StateExam" name="examType" value="No Follow" onChange={(e)=>setOgrobot(e.target.value)}/>
+//                                            <label htmlFor="StateExam" className="text-sm ml-1">NO Follow</label>
+//                                       </div>
+//                                    </div>
+//                               </div>
+
+//                               <div>
+//                                 <label htmlFor="status" className="form-label items-center">OG: googlebot</label>
+//                                    <div className="input-area relative flex">
+//                                        <div className="flex space-x-4 items-center mb-3">
+//                                            <input type="radio" id="NationalExam" name="case2" value="Follow" onChange={(e)=>setOggogle(e.target.value)}/>
+//                                            <label htmlFor="NationalExam" className="text-sm ml-1">Follow</label>
+//                                        </div>
+//                                        <div className="flex space-x-4 items-center mb-3 ml-5">
+//                                           <input type="radio" id="StateExam" name="examType" value="No Follow" onChange={(e)=>setOggogle(e.target.value)}/>
+//                                            <label htmlFor="StateExam" className="text-sm ml-1">NO Follow</label>
+//                                       </div>
+//                                    </div>
+//                               </div>
+//                               </div>
+//                           </div>
+//                               <button className="btn inline-flex justify-center btn-outline-dark" type='button' onClick={saveAsDraft}>Save As Draft</button>
+//                               <button className="btn inline-flex justify-center btn-outline-dark ml-3 bg-green-400" type='submit'>Make Exam Live</button>
+//                           </form>
+//     </div>
+//   )
+// }
+
+// export default Overview
